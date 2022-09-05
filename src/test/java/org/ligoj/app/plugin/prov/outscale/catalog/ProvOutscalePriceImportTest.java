@@ -155,9 +155,8 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 		this.resource.getImportCatalogResource().endTask("service:prov:outscale", false);
 		this.resource.getImportCatalogResource().startTask("service:prov:outscale", t -> {
 			t.setLocation(null);
-			t.setNbInstancePrices(null);
-			t.setNbInstanceTypes(null);
-			t.setNbStorageTypes(null);
+			t.setNbPrices(0);
+			t.setNbTypes(null);
 			t.setWorkload(0);
 			t.setDone(0);
 			t.setPhase(null);
@@ -187,7 +186,7 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 
 		// Check the 3 years term
 		var lookup = qiResource.lookup(subscription,
-				builder().cpu(7).ram(1741).constant(true).usage("36month").build());
+				builder().cpu(7).ram(1741).workload("100").usage("36month").build());
 		assertLookup("eu-west-2/ri-3y/linux/tinav1.cxry.high", lookup, 29.2);
 		Assertions.assertEquals(0, lookup.getPrice().getCost()); // Dynamic, per vCpu price
 		Assertions.assertEquals(0, lookup.getPrice().getCostPeriod()); // Dynamic
@@ -231,7 +230,7 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 		checkImportStatus();
 
 		// Check the new prices
-		lookup = qiResource.lookup(subscription, builder().cpu(7).ram(1741).constant(true).usage("36month").build());
+		lookup = qiResource.lookup(subscription, builder().cpu(7).ram(1741).workload("100").usage("36month").build());
 		assertLookup("eu-west-2/ri-3y/linux/tinav1.cxry.high", lookup, 30.514);
 		lookup = qiResource.lookup(subscription,
 				builder().cpu(3).ram(8000).os(VmOs.WINDOWS).software("sql server web").build());
@@ -246,10 +245,9 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 		Assertions.assertEquals(5, status.getWorkload());
 		Assertions.assertEquals("install-support", status.getPhase());
 		Assertions.assertEquals(DEFAULT_USER, status.getAuthor());
-		Assertions.assertTrue(status.getNbInstancePrices().intValue() >= 100);
-		Assertions.assertTrue(status.getNbInstanceTypes().intValue() >= 15);
+		Assertions.assertTrue(status.getNbPrices().intValue() >= 100);
+		Assertions.assertTrue(status.getNbTypes().intValue() >= 15);
 		Assertions.assertTrue(status.getNbLocations() >= 1);
-		Assertions.assertTrue(status.getNbStorageTypes().intValue() >= 3);
 	}
 
 	private void mockServer() throws IOException {
@@ -356,34 +354,31 @@ class ProvOutscalePriceImportTest extends AbstractServerTest {
 		} else {
 			Assertions.assertEquals("eu-west-2/ri-3y/linux/tinav1.cxry.medium", lookup.getPrice().getCode());
 		}
-		Assertions.assertFalse(lookup.getPrice().getType().getConstant());
 
 		// Request a dedicated instance for a generic Linux OS
-		lookup = qiResource.lookup(subscription, builder().constant(true).type("tinav5.cxry.high").os(VmOs.LINUX)
+		lookup = qiResource.lookup(subscription, builder().workload("100").type("tinav5.cxry.high").os(VmOs.LINUX)
 				.tenancy(ProvTenancy.DEDICATED).build());
 		Assertions.assertEquals("eu-west-2/ri-1m/linux/tinav5.cxry.high/dedicated", lookup.getPrice().getCode());
 		Assertions.assertFalse(lookup.getPrice().getType().isAutoScale());
 		Assertions.assertEquals(Rate.GOOD, lookup.getPrice().getType().getCpuRate());
-		Assertions.assertTrue(lookup.getPrice().getType().getConstant());
 
 		// Request a SQL Server
-		lookup = qiResource.lookup(subscription, builder().constant(true).cpu(3).type("tinav5.cxry.high")
+		lookup = qiResource.lookup(subscription, builder().workload("100").cpu(3).type("tinav5.cxry.high")
 				.software("SQL Server Web").os(VmOs.WINDOWS).build());
 		assertLookup("eu-west-2/ri-1m/windows/tinav5.cxry.high/sql server web", lookup, 211.428);
 		Assertions.assertFalse(lookup.getPrice().getType().isAutoScale());
 		Assertions.assertEquals(Rate.GOOD, lookup.getPrice().getType().getCpuRate());
-		Assertions.assertTrue(lookup.getPrice().getType().getConstant());
 
 		// Same but only 1 CPU -> 4 since min 4vCPU for SQL Server Web
-		lookup = qiResource.lookup(subscription, builder().constant(true).cpu(1).type("tinav5.cxry.high")
+		lookup = qiResource.lookup(subscription, builder().workload("100").cpu(1).type("tinav5.cxry.high")
 				.software("SQL Server Web").os(VmOs.WINDOWS).build());
 		assertLookup("eu-west-2/ri-1m/windows/tinav5.cxry.high/sql server web", lookup, 211.428);
 
 		// 5 vCPU = 6vCPU for SQL Server Web
-		lookup = qiResource.lookup(subscription, builder().constant(true).cpu(5).type("tinav5.cxry.high")
+		lookup = qiResource.lookup(subscription, builder().workload("100").cpu(5).type("tinav5.cxry.high")
 				.software("SQL Server Web").os(VmOs.WINDOWS).build());
 		assertLookup("eu-west-2/ri-1m/windows/tinav5.cxry.high/sql server web", lookup, 315.098);
-		lookup = qiResource.lookup(subscription, builder().constant(true).cpu(6).type("tinav5.cxry.high")
+		lookup = qiResource.lookup(subscription, builder().workload("100").cpu(6).type("tinav5.cxry.high")
 				.software("SQL Server Web").os(VmOs.WINDOWS).build());
 		assertLookup("eu-west-2/ri-1m/windows/tinav5.cxry.high/sql server web", lookup, 315.098);
 
